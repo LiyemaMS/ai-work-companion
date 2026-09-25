@@ -1,25 +1,22 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { MotionProps, MotionStyle } from "motion/react";
+import type { MotionStyle } from "motion/react";
 import { motion } from "motion/react";
 import type { CSSProperties, ElementType, JSX } from "react";
 import { memo, useMemo } from "react";
 
-type MotionHTMLProps = MotionProps & Record<string, unknown>;
 
 // Cache motion components at module level to avoid creating during render
-const motionComponentCache = new Map<
-  keyof JSX.IntrinsicElements,
-  React.ComponentType<MotionHTMLProps>
->();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyMotionComponent = React.ComponentType<any>;
+const motionComponentCache = new Map<keyof JSX.IntrinsicElements, AnyMotionComponent>();
 
-const getMotionComponent = (element: keyof JSX.IntrinsicElements) => {
-  let component = motionComponentCache.get(element);
-  if (!component) {
-    component = motion.create(element);
-    motionComponentCache.set(element, component);
-  }
+const getMotionComponent = (element: keyof JSX.IntrinsicElements): AnyMotionComponent => {
+  const cached = motionComponentCache.get(element);
+  if (cached) return cached;
+  const component = motion.create(element) as unknown as AnyMotionComponent;
+  motionComponentCache.set(element, component);
   return component;
 };
 
