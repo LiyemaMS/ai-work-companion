@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight, CalendarDays, Check, CheckCircle2, Clipboard, Clock3, Copy,
-  FileText, LayoutDashboard, Mail, Menu, Pencil, Plus, RefreshCw, Save,
-  Settings, Target, UserRound, Wand2, X,
+  ArrowRight, Check, CheckCircle2, Clipboard, Clock3, Copy,
+  FileAudio, FileText, LayoutDashboard, Mail, Menu, MessageCircle, Mic, Pencil, Plus, RefreshCw, Save,
+  Settings, Upload, UserRound, Wand2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,15 +20,14 @@ export const Route = createFileRoute("/")({
   component: ProductivityApp,
 });
 
-type View = "dashboard" | "email" | "meeting" | "planner" | "settings";
+type View = "dashboard" | "email" | "meeting" | "chatbot" | "settings";
 type SavedItem = { id: string; type: string; title: string; content: string; date: string };
-type PlanItem = { id: string; time: string; title: string; detail: string; urgent: boolean; done: boolean };
 
 const nav = [
   { id: "dashboard" as View, label: "Dashboard", icon: LayoutDashboard },
   { id: "email" as View, label: "Smart Email", icon: Mail },
   { id: "meeting" as View, label: "Meeting Notes", icon: FileText },
-  { id: "planner" as View, label: "Task Planner", icon: CalendarDays },
+  { id: "chatbot" as View, label: "AI Assistant", icon: MessageCircle },
 ];
 
 const fieldClass = "w-full rounded-lg border border-input bg-card px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/25";
@@ -80,21 +79,6 @@ function analyseNotes(notes: string, variation: number) {
   ].join("\n");
 }
 
-function buildPlan(tasksText: string, hoursText: string, deadline: string, priority: string, mode: string, variation: number): PlanItem[] {
-  const tasks = splitItems(tasksText);
-  const totalHours = Math.max(1, Number.parseFloat(hoursText) || 8);
-  const days = mode === "Weekly" ? 5 : 1;
-  const each = Math.max(.5, Math.min(2, totalHours / Math.max(tasks.length, 1)));
-  const start = 9 + (variation % 2);
-  return tasks.map((task, index) => {
-    const day = mode === "Weekly" ? ["Mon", "Tue", "Wed", "Thu", "Fri"][index % days] : "Today";
-    const slot = Math.floor(index / days);
-    const hour = start + Math.floor(slot * each);
-    const mins = Math.round((slot * each % 1) * 60).toString().padStart(2, "0");
-    return { id: `${Date.now()}-${index}`, time: `${day} · ${hour.toString().padStart(2, "0")}:${mins}`, title: task, detail: `${each.toFixed(each % 1 ? 1 : 0)}h focus block${deadline ? ` · due ${deadline}` : ""}`, urgent: priority === "High" || index === 0, done: false };
-  });
-}
-
 function ProductivityApp() {
   const [view, setView] = useState<View>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -115,7 +99,14 @@ function ProductivityApp() {
   useEffect(() => { if (ready) localStorage.setItem("awpa-profile", JSON.stringify(profile)); }, [profile, ready]);
 
   const saveOutput = (item: Omit<SavedItem, "id" | "date">) => setSaved((s) => [{ ...item, id: crypto.randomUUID(), date: "Just now" }, ...s].slice(0, 12));
-  const go = (v: View) => { setView(v); setMobileOpen(false); };
+  const go = (v: View) => {
+    if (v === "chatbot") {
+      let id = crypto.randomUUID();
+      try { const threads = JSON.parse(localStorage.getItem("awpa-chat-threads") || "[]") as { id?: string }[]; id = threads[0]?.id || id; } catch { /* start a fresh thread */ }
+      window.location.assign(`/chat/${id}`); return;
+    }
+    setView(v); setMobileOpen(false);
+  };
   return (
     <div className="min-h-screen bg-background text-foreground">
       {mobileOpen && <div className="fixed inset-0 z-40 bg-overlay lg:hidden" onClick={() => setMobileOpen(false)} />}
@@ -139,7 +130,6 @@ function ProductivityApp() {
           {view === "dashboard" && <Dashboard name={profile.name} saved={saved} go={go} />}
           {view === "email" && <EmailTool save={saveOutput} />}
           {view === "meeting" && <MeetingTool save={saveOutput} />}
-          {view === "planner" && <PlannerTool save={saveOutput} />}
           {view === "settings" && <SettingsView profile={profile} setProfile={setProfile} saved={saved} setSaved={setSaved} />}
         </div>
       </main>
@@ -153,10 +143,10 @@ function Dashboard({ name, saved, go }: { name: string; saved: SavedItem[]; go: 
   const features = [
     { id: "email" as View, icon: Mail, title: "Smart Email Generator", text: "Turn a few key points into a polished workplace email.", label: "Write an email" },
     { id: "meeting" as View, icon: FileText, title: "Meeting Notes Summarizer", text: "Transform raw notes into decisions and accountable next steps.", label: "Summarize notes" },
-    { id: "planner" as View, icon: CalendarDays, title: "AI Task Planner", text: "Shape priorities into a realistic daily or weekly schedule.", label: "Plan my work" },
+     { id: "chatbot" as View, icon: MessageCircle, title: "Interactive AI Assistant", text: "Chat through workplace questions, decisions, drafts, and priorities.", label: "Start a conversation" },
   ];
   return <div className="space-y-9 animate-in fade-in duration-500">
-    <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="mb-2 text-sm font-semibold text-primary">Thursday, 24 September</p><h1 className="font-display text-3xl font-semibold md:text-4xl">Good morning, {first} 👋</h1><p className="mt-3 max-w-xl text-muted-foreground">Your focused workspace for clearer communication, useful meeting notes, and a plan you can actually finish.</p></div><Button onClick={()=>go("planner")} size="lg"><Plus />Plan today</Button></section>
+    <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="mb-2 text-sm font-semibold text-primary">Thursday, 24 September</p><h1 className="font-display text-3xl font-semibold md:text-4xl">Good morning, {first} 👋</h1><p className="mt-3 max-w-xl text-muted-foreground">Your focused workspace for clearer communication, useful meeting notes, and practical workplace support.</p></div><Button onClick={()=>go("chatbot")} size="lg"><MessageCircle />Ask Workmate</Button></section>
     <section className="grid gap-4 sm:grid-cols-3"><Stat value={saved.length.toString()} label="Saved outputs" note="Stored on this device" /><Stat value="3" label="Tools ready" note="One focused workspace" /><Stat value="100%" label="Private" note="Your work stays local" /></section>
     <section><div className="mb-4 flex items-end justify-between"><div><p className="section-kicker">Your toolkit</p><h2 className="font-display text-2xl font-semibold">What would you like to accomplish?</h2></div></div><div className="grid gap-5 md:grid-cols-3">{features.map(({id,icon:Icon,title,text,label})=><article key={id} className="group flex min-h-64 flex-col rounded-xl border border-border bg-card p-6 shadow-card transition hover:-translate-y-1 hover:shadow-soft"><div className="mb-6 grid size-11 place-items-center rounded-lg bg-accent text-primary"><Icon /></div><h3 className="font-display text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p><Button className="mt-auto justify-between" variant="outline" onClick={()=>go(id)}>{label}<ArrowRight /></Button></article>)}</div></section>
     <section className="grid gap-6 lg:grid-cols-[1.3fr_.7fr]"><div><div className="mb-4"><p className="section-kicker">Recent activity</p><h2 className="font-display text-xl font-semibold">Pick up where you left off</h2></div><div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">{saved.length ? saved.slice(0,4).map((item,i)=><div key={item.id} className={cn("flex items-center gap-4 p-4",i>0&&"border-t border-border")}><div className="grid size-10 place-items-center rounded-lg bg-secondary text-primary"><FileText className="size-4"/></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="text-xs text-muted-foreground">{item.type} · {item.date}</p></div><CheckCircle2 className="size-4 text-success" /></div>) : <div className="p-8 text-center"><Clipboard className="mx-auto mb-3 size-6 text-muted-foreground"/><p className="font-medium">No saved work yet</p><p className="mt-1 text-sm text-muted-foreground">Your saved outputs will appear here.</p></div>}</div></div>
