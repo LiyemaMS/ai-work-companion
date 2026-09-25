@@ -102,7 +102,7 @@ function ProductivityApp() {
   const saveOutput = (item: Omit<SavedItem, "id" | "date">) => setSaved((s) => [{ ...item, id: crypto.randomUUID(), date: "Just now" }, ...s].slice(0, 12));
   const go = (v: View) => {
     if (v === "chatbot") {
-      let id = crypto.randomUUID();
+      let id: string = crypto.randomUUID();
       try { const threads = JSON.parse(localStorage.getItem("awpa-chat-threads") || "[]") as { id?: string }[]; id = threads[0]?.id || id; } catch { /* start a fresh thread */ }
       window.location.assign(`/chat/${id}`); return;
     }
