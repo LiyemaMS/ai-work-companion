@@ -1,147 +1,285 @@
-# AI Work Companion
+# AI Workplace Productivity Assistant
 
-Build a modern responsive SaaS web app called **AI Workplace Productivity Assistant**.
+## Project Overview
 
-Create a **frontend-only application with no backend, database, authentication, or external API setup**. Use the AI capabilities available in the Lovable environment to generate responses dynamically.
+**AI Workplace Productivity Assistant** is a modern, responsive SaaS-style web application designed to help professionals automate common workplace tasks using AI.
 
-### Design
+The application provides three core productivity tools:
 
-* Clean, modern, professional SaaS aesthetic
-* Colour palette: **dusty pink + ivory**, with dark brown/charcoal text
-* Rounded cards, subtle shadows, elegant spacing and modern typography
-* Fully responsive for desktop, tablet and mobile
-* Left sidebar navigation with icons:
+* **Smart Email Generator** – creates professional emails based on user input and selected communication tone.
+* **Meeting Notes Summarizer** – converts lengthy meeting notes into concise summaries while identifying decisions, action items and deadlines.
+* **AI Task Planner** – organises tasks into daily or weekly schedules and prioritises them based on urgency, importance and deadlines.
 
-  * Dashboard
-  * Smart Email
-  * Meeting Notes
-  * Task Planner
-* Add a simple profile/settings area
+The application was designed with a clean, professional interface using a **dusty pink and ivory colour palette**.
 
-### Dashboard
+This project is **frontend-only** and does not require a backend or database.
 
-Create a welcoming dashboard with:
+---
 
-* “Good morning 👋”
-* Short productivity overview
-* Three feature cards:
+## Features Implemented
 
-  1. Smart Email Generator
-  2. Meeting Notes Summarizer
-  3. AI Task Planner
-* Recent activity section
-* Quick-action buttons
+### 📧 Smart Email Generator
 
-### Smart Email Generator
+* Generate professional workplace emails using AI.
+* Supports three communication tones:
 
-Create a form with:
+  * Formal
+  * Friendly
+  * Persuasive
+* Users can provide:
 
-* Email purpose
-* Recipient/audience
-* Key points
-* Desired outcome
-* Tone: **Formal, Friendly, Persuasive**
-* Length: Concise, Standard, Detailed
+  * Email purpose
+  * Recipient/audience
+  * Key points
+  * Desired outcome
+  * Preferred length
+* AI-generated emails are editable.
+* Copy and regenerate functionality.
+* Structured AI prompt designed to avoid inventing information.
 
-Generate a **unique AI-written professional email based on the user's inputs**, not placeholder/generic text.
+### 📝 Meeting Notes Summarizer
 
-The generated email must be:
+* Allows users to enter lengthy meeting notes.
+* AI analyses the provided information.
+* Generates:
 
-* Editable
-* Copyable
-* Regeneratable
-* Clearly structured with subject and body
+  * Meeting summary
+  * Key decisions
+  * Action items
+  * Deadlines
+  * Follow-up points
+* Generated content can be edited.
+* Copy and regenerate functionality.
+* Designed to distinguish between information provided by the user and information that is unavailable.
 
-Use this prompt structure internally:
-“You are a professional workplace communication assistant. Write an email using the user's purpose, audience, key points, desired outcome, tone and length. Do not invent facts. Produce clear, professional workplace communication.”
+### ✅ AI Task Planner
 
-### Meeting Notes Summarizer
+* Create productivity plans using AI.
+* Supports:
 
-Provide a large text area where users can paste lengthy meeting notes.
+  * Daily schedules
+  * Weekly schedules
+* Users can provide goals, tasks, deadlines, working hours and priorities.
+* AI organises tasks according to urgency, importance and deadlines.
+* Generates structured time blocks.
+* Tasks can be edited and marked as completed.
 
-Generate an AI response containing:
+### 🎨 Modern SaaS Dashboard
 
-* **Meeting Summary**
-* **Key Decisions**
-* **Action Items**
-* **Deadlines**
-* **Follow-ups**
+* Responsive dashboard design.
+* Sidebar navigation.
+* Clean card-based interface.
+* Dusty pink and ivory colour scheme.
+* Responsive desktop, tablet and mobile layouts.
+* Quick-access feature cards.
+* Recent activity section.
+* Consistent interface across all productivity tools.
 
-The output must be based specifically on the user's notes, editable, copyable and regeneratable.
+### 🤖 Responsible AI
 
-Prompt structure:
-“You are a workplace meeting assistant. Analyse the provided meeting notes and identify the main discussion points, decisions, action items, responsible people and deadlines. Do not invent information. Clearly separate confirmed information from missing information.”
+The application includes a responsible AI disclaimer informing users that AI-generated information may contain errors or omissions and should be reviewed before use.
 
-### AI Task Planner
+> **AI-generated content may contain errors or omissions. Review and verify important information before using it. You remain responsible for final decisions and workplace communications.**
 
-Allow users to enter:
+### 💾 Local Storage
 
-* Goal
-* Tasks
-* Deadline
-* Available working hours
-* Priority
+The application uses browser `localStorage` where appropriate for saving user preferences and outputs.
 
-Let users choose **Daily** or **Weekly** planning.
+No external database is required.
 
-Generate an AI-created schedule that:
+---
 
-* Prioritises tasks
-* Organises tasks logically
-* Allocates realistic time blocks
-* Identifies urgent tasks
-* Includes deadlines
-* Explains prioritisation briefly
+## Technologies and Tools Used
 
-Make every generated task editable and allow users to mark tasks complete.
+### Frontend
 
-Prompt structure:
-“You are an AI productivity planner. Organise the user's tasks into a realistic daily or weekly schedule based only on the information provided. Prioritise tasks according to urgency, importance and deadlines. Do not invent deadlines or commitments.”
+* **React** – application interface and component architecture
+* **TypeScript** – type-safe development
+* **HTML5** – application structure
+* **CSS / Tailwind CSS** – responsive styling and UI design
+* **JavaScript** – application functionality
 
-### AI Output Experience
+### AI
 
-All AI results must appear in attractive editable cards.
+* AI-powered structured prompts for:
 
-Include:
+  * Email generation
+  * Meeting summarisation
+  * Task planning
+* User inputs are incorporated into prompts to generate context-specific responses.
 
-* Edit
-* Copy
-* Regenerate
-* Save locally
+### Development Tools
 
-Use **localStorage only** for saved outputs/preferences. Do not create a backend.
+* **Lovable** – application development and UI generation
+* **GitHub** – source-code management and project hosting
+* **Vite** – frontend development and build tooling
+* **Browser localStorage** – local persistence without a backend
 
-### Responsible AI
+---
 
-Display this disclaimer below AI-generated content:
+## Project Structure
 
-“AI-generated content may contain errors or omissions. Review and verify important information before using it. You remain responsible for final decisions and workplace communications.”
+```text
+AI-Workplace-Productivity-Assistant/
+│
+├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── assets/
+│   ├── App.tsx
+│   └── main.tsx
+│
+├── public/
+│
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+└── README.md
+```
 
-### Important
+---
 
-Do not create a backend, database, authentication system, payment system or unnecessary integrations.
+## Setup Instructions
 
-Do not use static placeholder responses. The three tools must produce **dynamic AI-generated outputs based on the user's actual input**.
+### 1. Clone the Repository
 
-Prioritise a polished, functional MVP with excellent UX, responsive design and the dusty-pink-and-ivory visual identity.
+```bash
+git clone https://github.com/YOUR-USERNAME/ai-workplace-productivity-assistant.git
+```
 
-This project was built with [Lovable](https://lovable.dev).
+Replace `YOUR-USERNAME` with your GitHub username.
 
-## Build with Lovable
+### 2. Navigate to the Project
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/fe8dd54d-b594-43fb-91cd-483de71e0daa).
+```bash
+cd ai-workplace-productivity-assistant
+```
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+### 3. Install Dependencies
 
-## Development
+Make sure you have **Node.js** installed.
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Then run:
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+```bash
+npm install
+```
+
+### 4. Start the Development Server
+
+```bash
 npm run dev
 ```
+
+The application will start on a local development URL, usually:
+
+```text
+http://localhost:5173
+```
+
+Open the URL in your browser to use the application.
+
+### 5. Build for Production
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+---
+
+## Usage
+
+### Generate an Email
+
+1. Open **Smart Email** from the sidebar.
+2. Enter the purpose and key points of the email.
+3. Select a tone:
+
+   * Formal
+   * Friendly
+   * Persuasive
+4. Select the desired length.
+5. Generate the email.
+6. Review and edit the AI-generated content.
+7. Copy or save the final email.
+
+### Summarise Meeting Notes
+
+1. Open **Meeting Notes**.
+2. Paste or enter your meeting notes.
+3. Select the summarisation option.
+4. Generate the AI summary.
+5. Review:
+
+   * Summary
+   * Decisions
+   * Action items
+   * Deadlines
+   * Follow-ups
+6. Edit or copy the results as required.
+
+### Create a Task Plan
+
+1. Open **Task Planner**.
+2. Enter your goal and tasks.
+3. Add deadlines and available working hours.
+4. Select **Daily** or **Weekly**.
+5. Generate the AI plan.
+6. Review and edit the suggested schedule.
+7. Mark completed tasks as finished.
+
+---
+
+## Responsible AI
+
+This application is intended as a productivity aid rather than a replacement for professional judgement.
+
+Users should:
+
+* Verify important information.
+* Review AI-generated workplace communications before sending them.
+* Confirm deadlines, decisions and action items against the original meeting information.
+* Avoid entering confidential or sensitive workplace information unless the environment is approved for that information.
+* Treat AI-generated recommendations as suggestions rather than authoritative decisions.
+
+---
+
+## Project Goals
+
+The project aims to demonstrate how AI can be incorporated into everyday professional workflows to:
+
+* Reduce repetitive administrative work.
+* Improve workplace communication.
+* Make meeting information easier to understand.
+* Improve task organisation and prioritisation.
+* Provide professionals with an intuitive AI productivity workspace.
+
+---
+
+## Future Improvements
+
+Potential future enhancements include:
+
+* Calendar integration.
+* Email platform integration.
+* User authentication.
+* Cloud-based saved outputs.
+* Team collaboration.
+* Custom AI prompt templates.
+* Advanced task analytics.
+* Exporting meeting summaries and task plans.
+* Additional communication tones and languages.
+
+---
+
+## License
+
+This project is intended for educational and demonstration purposes.
