@@ -18,10 +18,11 @@ export async function handleWorkplaceChat(request: Request) {
     headers: { "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "vercel-ai-sdk" },
     fetch: gateway.fetch,
   });
+  const textOnlyMessages: UIMessage[] = payload.messages.map((message) => ({ ...message, parts: message.parts.filter((part) => part.type === "text") }));
   const result = streamText({
     model: provider.responses("openai/gpt-6-astra"),
     system: SYSTEM,
-    messages: await convertToModelMessages(payload.messages),
+    messages: await convertToModelMessages(textOnlyMessages),
     abortSignal: request.signal,
     providerOptions: { openai: { forceReasoning: true, reasoningEffort: "medium", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] } },
   });

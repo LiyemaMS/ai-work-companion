@@ -71,6 +71,7 @@ function ChatPage() {
     </aside>
     <main className="flex min-w-0 flex-1 flex-col">
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 md:px-7"><div><p className="section-kicker">Interactive assistant</p><h1 className="font-display font-semibold">{active?.title ?? "New conversation"}</h1></div><div className="flex gap-2"><Button onClick={createThread} size="icon" variant="outline" className="md:hidden" aria-label="New conversation"><Plus/></Button><Button asChild size="icon" variant="outline" className="md:hidden"><Link to="/" aria-label="Dashboard"><LayoutDashboard/></Link></Button></div></header>
+      <nav className="flex shrink-0 gap-2 overflow-x-auto border-b border-border bg-sidebar px-3 py-2 md:hidden" aria-label="Conversations">{threads.map((thread) => <Button key={thread.id} size="sm" variant={thread.id === threadId ? "secondary" : "ghost"} className="max-w-48 shrink-0" onClick={() => navigate({ to: "/chat/$threadId", params: { threadId: thread.id } })}><MessageCircle/><span className="truncate">{thread.title}</span></Button>)}</nav>
       {ready && active ? <ChatWindow key={threadId} thread={active} save={updateMessages}/> : <div className="grid flex-1 place-items-center text-sm text-muted-foreground">Loading conversation…</div>}
     </main>
   </div>;

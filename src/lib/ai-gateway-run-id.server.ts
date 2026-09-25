@@ -30,9 +30,23 @@ export function requestRunId(request: Request) {
 }
 
 export async function attachRunId(response: Response, gateway: ReturnType<typeof createRunIdFetch>) {
+  if (!response.body) return response;
+  const reader = response.body.getReader();
+  const firstChunk = reader.read();
   const runId = await gateway.waitForRunId();
   const headers = new Headers(response.headers);
   if (runId) headers.set(RUN_ID_HEADER, runId);
   headers.set("Access-Control-Expose-Headers", RUN_ID_HEADER);
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  const body = new ReadableStream({
+    async start(controller) {
+      try {
+        const first = await firstChunk;
+        if (!first.done) controller.enqueue(first.value);
+        while (!first.done) { const next = await reader.read(); if (next.done) break; controller.enqueue(next.value); }
+        controller.close();
+      } catch (error) { controller.error(error); }
+    },
+    cancel: (reason) => reader.cancel(reason),
+  });
+  return new Response(body, { status: response.status, statusText: response.statusText, headers });
 }
