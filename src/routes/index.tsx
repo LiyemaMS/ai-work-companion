@@ -12,9 +12,9 @@ import { recordWav } from "@/lib/record-wav";
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
     { title: "AI Workplace Productivity Assistant" },
-    { name: "description", content: "Create professional emails, structured meeting summaries, and realistic work plans in one focused workspace." },
+    { name: "description", content: "Create professional emails, transcribe and summarize meetings, and chat with an interactive workplace assistant." },
     { property: "og:title", content: "AI Workplace Productivity Assistant" },
-    { property: "og:description", content: "A focused workspace for emails, meeting notes, and task planning." },
+    { property: "og:description", content: "A focused workspace for emails, meeting transcription, summaries, and interactive workplace support." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ]}),
