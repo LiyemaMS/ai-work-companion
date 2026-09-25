@@ -1,34 +1,34 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  ArrowRight, CalendarDays, Check, CheckCircle2, Clipboard, Clock3, Copy,
-  FileText, LayoutDashboard, Mail, Menu, Pencil, Plus, RefreshCw, Save,
-  Settings, Target, UserRound, Wand2, X,
+  ArrowRight, Check, CheckCircle2, Clipboard, Clock3, Copy,
+  FileAudio, FileText, LayoutDashboard, Mail, Menu, MessageCircle, Mic, Pencil, Plus, RefreshCw, Save,
+  Settings, Upload, UserRound, Wand2, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { recordWav } from "@/lib/record-wav";
 
 export const Route = createFileRoute("/")({
   head: () => ({ meta: [
     { title: "AI Workplace Productivity Assistant" },
-    { name: "description", content: "Create professional emails, structured meeting summaries, and realistic work plans in one focused workspace." },
+    { name: "description", content: "Create professional emails, transcribe and summarize meetings, and chat with an interactive workplace assistant." },
     { property: "og:title", content: "AI Workplace Productivity Assistant" },
-    { property: "og:description", content: "A focused workspace for emails, meeting notes, and task planning." },
+    { property: "og:description", content: "A focused workspace for emails, meeting transcription, summaries, and interactive workplace support." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary_large_image" },
   ]}),
   component: ProductivityApp,
 });
 
-type View = "dashboard" | "email" | "meeting" | "planner" | "settings";
+type View = "dashboard" | "email" | "meeting" | "chatbot" | "settings";
 type SavedItem = { id: string; type: string; title: string; content: string; date: string };
-type PlanItem = { id: string; time: string; title: string; detail: string; urgent: boolean; done: boolean };
 
 const nav = [
   { id: "dashboard" as View, label: "Dashboard", icon: LayoutDashboard },
   { id: "email" as View, label: "Smart Email", icon: Mail },
   { id: "meeting" as View, label: "Meeting Notes", icon: FileText },
-  { id: "planner" as View, label: "Task Planner", icon: CalendarDays },
+  { id: "chatbot" as View, label: "AI Assistant", icon: MessageCircle },
 ];
 
 const fieldClass = "w-full rounded-lg border border-input bg-card px-3.5 py-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-ring/25";
@@ -80,21 +80,6 @@ function analyseNotes(notes: string, variation: number) {
   ].join("\n");
 }
 
-function buildPlan(tasksText: string, hoursText: string, deadline: string, priority: string, mode: string, variation: number): PlanItem[] {
-  const tasks = splitItems(tasksText);
-  const totalHours = Math.max(1, Number.parseFloat(hoursText) || 8);
-  const days = mode === "Weekly" ? 5 : 1;
-  const each = Math.max(.5, Math.min(2, totalHours / Math.max(tasks.length, 1)));
-  const start = 9 + (variation % 2);
-  return tasks.map((task, index) => {
-    const day = mode === "Weekly" ? ["Mon", "Tue", "Wed", "Thu", "Fri"][index % days] : "Today";
-    const slot = Math.floor(index / days);
-    const hour = start + Math.floor(slot * each);
-    const mins = Math.round((slot * each % 1) * 60).toString().padStart(2, "0");
-    return { id: `${Date.now()}-${index}`, time: `${day} · ${hour.toString().padStart(2, "0")}:${mins}`, title: task, detail: `${each.toFixed(each % 1 ? 1 : 0)}h focus block${deadline ? ` · due ${deadline}` : ""}`, urgent: priority === "High" || index === 0, done: false };
-  });
-}
-
 function ProductivityApp() {
   const [view, setView] = useState<View>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -115,7 +100,14 @@ function ProductivityApp() {
   useEffect(() => { if (ready) localStorage.setItem("awpa-profile", JSON.stringify(profile)); }, [profile, ready]);
 
   const saveOutput = (item: Omit<SavedItem, "id" | "date">) => setSaved((s) => [{ ...item, id: crypto.randomUUID(), date: "Just now" }, ...s].slice(0, 12));
-  const go = (v: View) => { setView(v); setMobileOpen(false); };
+  const go = (v: View) => {
+    if (v === "chatbot") {
+      let id: string = crypto.randomUUID();
+      try { const threads = JSON.parse(localStorage.getItem("awpa-chat-threads") || "[]") as { id?: string }[]; id = threads[0]?.id || id; } catch { /* start a fresh thread */ }
+      window.location.assign(`/chat/${id}`); return;
+    }
+    setView(v); setMobileOpen(false);
+  };
   return (
     <div className="min-h-screen bg-background text-foreground">
       {mobileOpen && <div className="fixed inset-0 z-40 bg-overlay lg:hidden" onClick={() => setMobileOpen(false)} />}
@@ -139,7 +131,6 @@ function ProductivityApp() {
           {view === "dashboard" && <Dashboard name={profile.name} saved={saved} go={go} />}
           {view === "email" && <EmailTool save={saveOutput} />}
           {view === "meeting" && <MeetingTool save={saveOutput} />}
-          {view === "planner" && <PlannerTool save={saveOutput} />}
           {view === "settings" && <SettingsView profile={profile} setProfile={setProfile} saved={saved} setSaved={setSaved} />}
         </div>
       </main>
@@ -150,13 +141,14 @@ function ProductivityApp() {
 
 function Dashboard({ name, saved, go }: { name: string; saved: SavedItem[]; go: (v: View) => void }) {
   const first = name.split(" ")[0] || "there";
+  const today = new Intl.DateTimeFormat("en-ZA", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const features = [
     { id: "email" as View, icon: Mail, title: "Smart Email Generator", text: "Turn a few key points into a polished workplace email.", label: "Write an email" },
     { id: "meeting" as View, icon: FileText, title: "Meeting Notes Summarizer", text: "Transform raw notes into decisions and accountable next steps.", label: "Summarize notes" },
-    { id: "planner" as View, icon: CalendarDays, title: "AI Task Planner", text: "Shape priorities into a realistic daily or weekly schedule.", label: "Plan my work" },
+     { id: "chatbot" as View, icon: MessageCircle, title: "Interactive AI Assistant", text: "Chat through workplace questions, decisions, drafts, and priorities.", label: "Start a conversation" },
   ];
   return <div className="space-y-9 animate-in fade-in duration-500">
-    <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="mb-2 text-sm font-semibold text-primary">Thursday, 24 September</p><h1 className="font-display text-3xl font-semibold md:text-4xl">Good morning, {first} 👋</h1><p className="mt-3 max-w-xl text-muted-foreground">Your focused workspace for clearer communication, useful meeting notes, and a plan you can actually finish.</p></div><Button onClick={()=>go("planner")} size="lg"><Plus />Plan today</Button></section>
+    <section className="flex flex-col justify-between gap-6 md:flex-row md:items-end"><div><p className="mb-2 text-sm font-semibold text-primary">{today}</p><h1 className="font-display text-3xl font-semibold md:text-4xl">Good morning, {first} 👋</h1><p className="mt-3 max-w-xl text-muted-foreground">Your focused workspace for clearer communication, useful meeting notes, and practical workplace support.</p></div><Button onClick={()=>go("chatbot")} size="lg"><MessageCircle />Ask Workmate</Button></section>
     <section className="grid gap-4 sm:grid-cols-3"><Stat value={saved.length.toString()} label="Saved outputs" note="Stored on this device" /><Stat value="3" label="Tools ready" note="One focused workspace" /><Stat value="100%" label="Private" note="Your work stays local" /></section>
     <section><div className="mb-4 flex items-end justify-between"><div><p className="section-kicker">Your toolkit</p><h2 className="font-display text-2xl font-semibold">What would you like to accomplish?</h2></div></div><div className="grid gap-5 md:grid-cols-3">{features.map(({id,icon:Icon,title,text,label})=><article key={id} className="group flex min-h-64 flex-col rounded-xl border border-border bg-card p-6 shadow-card transition hover:-translate-y-1 hover:shadow-soft"><div className="mb-6 grid size-11 place-items-center rounded-lg bg-accent text-primary"><Icon /></div><h3 className="font-display text-lg font-semibold">{title}</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p><Button className="mt-auto justify-between" variant="outline" onClick={()=>go(id)}>{label}<ArrowRight /></Button></article>)}</div></section>
     <section className="grid gap-6 lg:grid-cols-[1.3fr_.7fr]"><div><div className="mb-4"><p className="section-kicker">Recent activity</p><h2 className="font-display text-xl font-semibold">Pick up where you left off</h2></div><div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">{saved.length ? saved.slice(0,4).map((item,i)=><div key={item.id} className={cn("flex items-center gap-4 p-4",i>0&&"border-t border-border")}><div className="grid size-10 place-items-center rounded-lg bg-secondary text-primary"><FileText className="size-4"/></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="text-xs text-muted-foreground">{item.type} · {item.date}</p></div><CheckCircle2 className="size-4 text-success" /></div>) : <div className="p-8 text-center"><Clipboard className="mx-auto mb-3 size-6 text-muted-foreground"/><p className="font-medium">No saved work yet</p><p className="mt-1 text-sm text-muted-foreground">Your saved outputs will appear here.</p></div>}</div></div>
@@ -179,9 +171,31 @@ function EmailTool({save}:{save:(x:Omit<SavedItem,"id"|"date">)=>void}) {
   <section className="min-h-[580px] rounded-xl border border-border bg-card p-5 shadow-card md:p-6">{result?<div className="flex h-full flex-col"><div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="section-kicker">Generated draft</p><h2 className="font-display text-xl font-semibold">Ready to review</h2></div><OutputActions copy={()=>navigator.clipboard.writeText(`Subject: ${result.subject}\n\n${result.body}`)} regenerate={generate} save={()=>{save({type:"Smart Email",title:result.subject,content:result.body});setSaved(true)}} saved={saved}/></div><Field label="Subject"><input className={fieldClass} value={result.subject} onChange={e=>setResult({...result,subject:e.target.value})}/></Field><label className="mt-5 flex flex-1 flex-col"><span className="mb-2 flex items-center gap-2 text-sm font-semibold"><Pencil className="size-4"/>Email body</span><textarea className={cn(fieldClass,"min-h-96 flex-1 resize-y leading-7")} value={result.body} onChange={e=>setResult({...result,body:e.target.value})}/></label><Disclaimer/></div>:<EmptyOutput icon={Mail} title="Your email will appear here" text="Complete the form to create a tailored draft with a subject and editable body."/>}</section></div></>;
 }
 
-function MeetingTool({save}:{save:(x:Omit<SavedItem,"id"|"date">)=>void}) { const [notes,setNotes]=useState("");const [result,setResult]=useState("");const [variation,setVariation]=useState(0);const [saved,setSaved]=useState(false);const [error,setError]=useState(""); const generate=()=>{if(notes.trim().length<20){setError("Paste at least a few sentences of meeting notes first.");return}setError("");const n=variation+1;setVariation(n);setResult(analyseNotes(notes,n));setSaved(false)}; return <><PageIntro eyebrow="Meeting intelligence" title="Meeting Notes Summarizer" text="Extract confirmed decisions, owners, deadlines, and follow-ups without filling gaps with assumptions."/><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-xl border border-border bg-card p-5 shadow-card md:p-6"><Field label="Meeting notes"><textarea maxLength={12000} value={notes} onChange={e=>setNotes(e.target.value)} className={cn(fieldClass,"min-h-[470px] resize-y leading-7")} placeholder="Paste your meeting transcript or rough notes here..."/></Field><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>Names, decisions, and dates stay exactly as provided.</span><span>{notes.length.toLocaleString()} / 12,000</span></div>{error&&<p className="mt-3 text-sm font-medium text-destructive">{error}</p>}<Button className="mt-5 w-full" size="lg" onClick={generate}><Wand2/>Summarize meeting</Button></section><section className="min-h-[600px] rounded-xl border border-border bg-card p-5 shadow-card md:p-6">{result?<div><div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="section-kicker">Structured notes</p><h2 className="font-display text-xl font-semibold">Meeting brief</h2></div><OutputActions copy={()=>navigator.clipboard.writeText(result)} regenerate={generate} save={()=>{save({type:"Meeting Notes",title:"Meeting summary",content:result});setSaved(true)}} saved={saved}/></div><textarea value={result} onChange={e=>setResult(e.target.value)} className={cn(fieldClass,"min-h-[470px] resize-y whitespace-pre-wrap leading-7")}/><Disclaimer/></div>:<EmptyOutput icon={FileText} title="Your meeting brief will appear here" text="Paste notes to identify the discussion, confirmed decisions, action items, deadlines, and missing details."/>}</section></div></> }
+async function transcribeAudio(file: File, onText: (text: string) => void) {
+  const form = new FormData(); form.append("file", file);
+  const response = await fetch("/api/transcribe", { method: "POST", body: form });
+  if (!response.ok) { const body = await response.json().catch(() => ({})) as { message?: string }; throw new Error(body.message || "The audio could not be transcribed."); }
+  if (!response.body) throw new Error("No transcript was returned.");
+  const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let transcript = "";
+  while (true) {
+    const { value, done } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n"); buffer = blocks.pop() || "";
+    for (const block of blocks) for (const line of block.split("\n")) if (line.startsWith("data:")) {
+      const raw = line.slice(5).trim(); if (!raw || raw === "[DONE]") continue;
+      try { const event = JSON.parse(raw) as { type?: string; delta?: string; text?: string; error?: { message?: string } }; if (event.error?.message) throw new Error(event.error.message); if (event.type === "transcript.text.delta" && event.delta) { transcript += event.delta; onText(transcript); } if (event.type === "transcript.text.done" && event.text) { transcript = event.text; onText(transcript); } } catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+    }
+  }
+  if (!transcript.trim()) throw new Error("No speech was detected in this audio.");
+}
 
-function PlannerTool({save}:{save:(x:Omit<SavedItem,"id"|"date">)=>void}) { const [goal,setGoal]=useState("");const [tasks,setTasks]=useState("");const [deadline,setDeadline]=useState("");const [hours,setHours]=useState("8");const [priority,setPriority]=useState("High");const [mode,setMode]=useState("Daily");const [items,setItems]=useState<PlanItem[]>([]);const [variation,setVariation]=useState(0);const [saved,setSaved]=useState(false);const [error,setError]=useState("");const generate=()=>{if(!goal.trim()||!tasks.trim()){setError("Add a goal and at least one task to build your plan.");return}setError("");const n=variation+1;setVariation(n);setItems(buildPlan(tasks,hours,deadline,priority,mode,n));setSaved(false)}; const content=useMemo(()=>`${goal}\n${items.map(i=>`${i.done?"✓":"○"} ${i.time} — ${i.title} (${i.detail})`).join("\n")}`, [goal,items]); return <><PageIntro eyebrow="Planning workspace" title="AI Task Planner" text="Build a grounded schedule around your real priorities, available hours, and stated deadlines."/><div className="grid gap-6 xl:grid-cols-[.82fr_1.18fr]"><section className="rounded-xl border border-border bg-card p-5 shadow-card md:p-6"><div className="grid gap-5"><Field label="Goal"><input maxLength={240} className={fieldClass} value={goal} onChange={e=>setGoal(e.target.value)} placeholder="What do you want to achieve?"/></Field><Field label="Tasks"><textarea maxLength={4000} className={cn(fieldClass,"min-h-36 resize-y")} value={tasks} onChange={e=>setTasks(e.target.value)} placeholder="Add one task per line"/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Deadline"><input type="date" className={fieldClass} value={deadline} onChange={e=>setDeadline(e.target.value)}/></Field><Field label="Available working hours"><input min="1" max="80" type="number" className={fieldClass} value={hours} onChange={e=>setHours(e.target.value)}/></Field></div><Field label="Priority"><Segmented options={["High","Medium","Low"]} value={priority} setValue={setPriority}/></Field><Field label="Planning view"><div className="grid grid-cols-2 gap-1 rounded-lg bg-secondary p-1">{["Daily","Weekly"].map(x=><Button key={x} type="button" variant="ghost" onClick={()=>setMode(x)} className={cn(mode===x&&"bg-card text-primary shadow-sm")}>{x}</Button>)}</div></Field>{error&&<p className="text-sm font-medium text-destructive">{error}</p>}<Button size="lg" onClick={generate}><Wand2/>Build my plan</Button></div></section><section className="min-h-[610px] rounded-xl border border-border bg-card p-5 shadow-card md:p-6">{items.length?<div><div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="section-kicker">{mode} schedule</p><h2 className="font-display text-xl font-semibold">{goal}</h2></div><OutputActions copy={()=>navigator.clipboard.writeText(content)} regenerate={generate} save={()=>{save({type:"Task Plan",title:goal,content});setSaved(true)}} saved={saved}/></div><div className="space-y-3">{items.map((item,index)=><div key={item.id} className={cn("flex gap-3 rounded-lg border border-border p-4 transition",item.done&&"bg-muted/60 opacity-70")}><Button size="icon" variant={item.done?"default":"outline"} className="mt-0.5 size-8 shrink-0" onClick={()=>setItems(all=>all.map(x=>x.id===item.id?{...x,done:!x.done}:x))} aria-label={item.done?"Mark incomplete":"Mark complete"}>{item.done?<Check/>:<span className="size-3 rounded-full border border-current"/>}</Button><div className="min-w-0 flex-1"><div className="mb-1 flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-primary">{item.time}</span>{item.urgent&&<span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-bold uppercase text-warning">Urgent</span>}</div><input aria-label={`Task ${index+1}`} value={item.title} onChange={e=>setItems(all=>all.map(x=>x.id===item.id?{...x,title:e.target.value}:x))} className={cn("w-full bg-transparent text-sm font-semibold outline-none",item.done&&"line-through")}/><p className="mt-1 text-xs text-muted-foreground">{item.detail}</p></div></div>)}</div><div className="mt-5 rounded-lg bg-secondary p-4 text-sm leading-6"><strong>Why this order:</strong> The highest-priority work is placed first, with focused blocks distributed across your {hours || "available"} hours. Only the deadline you provided is used.</div><Disclaimer/></div>:<EmptyOutput icon={Target} title="Your schedule will appear here" text="Add your goal and tasks to create editable time blocks you can complete as you work."/>}</section></div></> }
+function MeetingTool({save}:{save:(x:Omit<SavedItem,"id"|"date">)=>void}) {
+  const [notes,setNotes]=useState(""); const [result,setResult]=useState(""); const [variation,setVariation]=useState(0); const [saved,setSaved]=useState(false); const [error,setError]=useState("");
+  const [recording,setRecording]=useState(false); const [transcribing,setTranscribing]=useState(false); const recorder=useRef<{stop:()=>Promise<File>}|null>(null); const uploadRef=useRef<HTMLInputElement>(null);
+  const generate=()=>{if(notes.trim().length<20){setError("Paste, record, or upload at least a few sentences first.");return}setError("");const n=variation+1;setVariation(n);setResult(analyseNotes(notes,n));setSaved(false)};
+  const processAudio=async(file:File)=>{setError("");setTranscribing(true);try{const prefix=notes.trim()?`${notes.trim()}\n\n`:"";await transcribeAudio(file,text=>setNotes(`${prefix}${text}`));}catch(e){setError(e instanceof Error?e.message:"The audio could not be transcribed.");}finally{setTranscribing(false)}};
+  const toggleRecording=async()=>{if(recording){setRecording(false);try{const file=await recorder.current?.stop();recorder.current=null;if(file)await processAudio(file);}catch(e){setError(e instanceof Error?e.message:"The recording could not be processed.");}return}try{recorder.current=await recordWav();setRecording(true);setError("");}catch{setError("Microphone access was unavailable. Check your browser permission and try again.");}};
+  return <><PageIntro eyebrow="Meeting intelligence" title="Meeting Notes Summarizer" text="Paste notes or transcribe a recording, then extract decisions, owners, deadlines, and follow-ups without assumptions."/><div className="grid gap-6 xl:grid-cols-2"><section className="rounded-xl border border-border bg-card p-5 shadow-card md:p-6"><div className="mb-5 rounded-lg border border-border bg-secondary/60 p-4"><div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-lg bg-accent text-primary"><FileAudio className="size-5"/></div><div><p className="text-sm font-semibold">Transcribe meeting audio</p><p className="text-xs text-muted-foreground">Record now or upload an audio file up to 14 MB.</p></div></div><div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant={recording?"default":"outline"} onClick={toggleRecording} disabled={transcribing}><Mic className={cn(recording&&"animate-pulse")}/>{recording?"Stop & transcribe":"Record audio"}</Button><Button type="button" variant="outline" onClick={()=>uploadRef.current?.click()} disabled={recording||transcribing}><Upload/>{transcribing?"Transcribing…":"Upload audio"}</Button><input ref={uploadRef} type="file" accept="audio/*" className="hidden" onChange={e=>{const file=e.target.files?.[0];if(file)void processAudio(file);e.currentTarget.value=""}}/></div></div><Field label="Meeting notes"><textarea maxLength={12000} value={notes} onChange={e=>setNotes(e.target.value)} className={cn(fieldClass,"min-h-[350px] resize-y leading-7")} placeholder="Paste notes here, record the meeting, or upload an audio file..."/></Field><div className="mt-2 flex justify-between gap-3 text-xs text-muted-foreground"><span>{transcribing?"Your transcript will appear here as it is processed.":"Names, decisions, and dates stay exactly as provided."}</span><span className="shrink-0">{notes.length.toLocaleString()} / 12,000</span></div>{error&&<p className="mt-3 text-sm font-medium text-destructive">{error}</p>}<Button className="mt-5 w-full" size="lg" onClick={generate} disabled={transcribing}><Wand2/>Summarize meeting</Button></section><section className="min-h-[600px] rounded-xl border border-border bg-card p-5 shadow-card md:p-6">{result?<div><div className="mb-5 flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-center sm:justify-between"><div><p className="section-kicker">Structured notes</p><h2 className="font-display text-xl font-semibold">Meeting brief</h2></div><OutputActions copy={()=>navigator.clipboard.writeText(result)} regenerate={generate} save={()=>{save({type:"Meeting Notes",title:"Meeting summary",content:result});setSaved(true)}} saved={saved}/></div><textarea value={result} onChange={e=>setResult(e.target.value)} className={cn(fieldClass,"min-h-[470px] resize-y whitespace-pre-wrap leading-7")}/><Disclaimer/></div>:<EmptyOutput icon={FileText} title="Your meeting brief will appear here" text="Add notes or transcribe audio to identify discussion, decisions, action items, deadlines, and missing details."/>}</section></div></>
+}
 
 function EmptyOutput({icon:Icon,title,text}:{icon:typeof Mail;title:string;text:string}) { return <div className="grid min-h-[520px] place-items-center text-center"><div className="max-w-xs"><div className="mx-auto mb-4 grid size-14 place-items-center rounded-xl bg-accent text-primary"><Icon className="size-6"/></div><h2 className="font-display text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{text}</p></div></div> }
 function SettingsView({profile,setProfile,saved,setSaved}:{profile:{name:string;role:string};setProfile:(x:{name:string;role:string})=>void;saved:SavedItem[];setSaved:(x:SavedItem[])=>void}) { return <><PageIntro eyebrow="Personal preferences" title="Profile & settings" text="Personalise your local workspace. These details are saved only on this device."/><div className="grid gap-6 lg:grid-cols-2"><section className="rounded-xl border border-border bg-card p-6 shadow-card"><div className="mb-6 flex items-center gap-4"><div className="grid size-12 place-items-center rounded-full bg-secondary text-primary"><UserRound/></div><div><h2 className="font-display text-lg font-semibold">Your profile</h2><p className="text-sm text-muted-foreground">Used for your workspace greeting.</p></div></div><div className="grid gap-5"><Field label="Name"><input className={fieldClass} value={profile.name} onChange={e=>setProfile({...profile,name:e.target.value.slice(0,80)})}/></Field><Field label="Role or team"><input className={fieldClass} value={profile.role} onChange={e=>setProfile({...profile,role:e.target.value.slice(0,100)})}/></Field><div className="flex items-center gap-2 text-sm text-success"><CheckCircle2 className="size-4"/>Changes save automatically</div></div></section><section className="rounded-xl border border-border bg-card p-6 shadow-card"><h2 className="font-display text-lg font-semibold">Local data</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">You have {saved.length} saved {saved.length===1?"output":"outputs"} on this device. Clear them whenever you need a fresh start.</p><Button className="mt-6" variant="outline" onClick={()=>setSaved([])} disabled={!saved.length}>Clear saved outputs</Button></section></div></> }
